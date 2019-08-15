@@ -50,17 +50,19 @@ router.get('/user', async (req, res) => {
 
     if (user === null) {
         res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NULL_VALUE));
+    }else if(user < 0){
+        res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.INVALID_TOKEN));
     } else {
         const selectUserQuery = 'SELECT * FROM user WHERE userIdx = ?';
         const result = await pool.queryParam_Parse(selectUserQuery, [user.userIdx]);
 
-        console.log("userIdx:::" + JSON.stringify(user));
+        console.log("userIdx:::" + JSON.stringify(user.userIdx));
 
         delete result[0].userIdx;
         delete result[0].authType;
         delete result[0].pw;
 
-        res.status(200).send(utils.successTrue(statusCode.CREATED, resMessage.READ_SUCCESS, result));
+        res.status(200).send(utils.successTrue(statusCode.OK, resMessage.READ_SUCCESS, result[0]));
     }
 });
 
