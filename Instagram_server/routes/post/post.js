@@ -7,6 +7,7 @@ const utils = require('../../module/utils/utils');
 const upload = require('../../config/multer');
 
 const pool = require('../../config/dbConfig');
+const db = require('../../module/pool');
 const jwt = require('../../module/jwt');
 
 var moment = require('moment');
@@ -79,6 +80,22 @@ router.post('/', upload.array('photos'), async (req, res) => {
             pool.releaseConnection(connection);
             res.status(200).send(utils.successTrue(statusCode.CREATED, resMessage.SAVE_SUCCESS));
         }
+    }
+});
+
+router.patch('/:idx', async (req, res) => {
+    const user = jwt.verify(req.headers.token);
+
+    if (user === null || !req.params.idx) {
+        res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NULL_VALUE));
+    } else {
+        const updateUserQuery = 'UPDATE post SET content = ? WHERE postIdx = ?';
+        const userResult = await db.queryParam_Parse(updateUserQuery, [req.body.content, req.params.idx]);
+
+        if(!userResult)
+            res.status(200).send(utils.successTrue(statusCode.CREATED, resMessage.UPDATE_SUCCESS));
+        else
+            res.status(200).send(utils.successFalse(statusCode.DB_ERROR, resMessage.UPDATE_FAIL));
     }
 });
 
