@@ -19,22 +19,26 @@ router.get('/', async (req, res) => {
     if (user === null || !req.headers.token) {
         res.status(200).send(utils.successFalse(statusCode.BAD_REQUEST, resMessage.NULL_VALUE));
     } else {
-        try{
+        try {
             var connection = await pool.getConnection();
+            const selectUserPost =
+                'SELECT P.*, COUNT (L.likeIdx) likeCnt, COUNT(C.commentIdx) commentCount ' +
+                'FROM post AS P ' +
+                'LEFT OUTER JOIN instagram.like AS L ON P.postIdx = L.postIdx ' +
+                'LEFT OUTER JOIN comment AS C ON P.postIdx = P.postIdx ' +
+                'WHERE P.userIdx = ? ' +
+                'GROUP BY P.postIdx ' +
+                'ORDER BY P.postIdx DESC ';
 
-            const selectPost = 'SELECT * FROM post WHERE userIdx = ?';
-            var allPostResult = await connection.query(selectPost, [user.userIdx]);
-        }catch(err){
+            var postResult = await connection.query(selectUserPost, [user.userIdx]);
+        } catch (err) {
             console.log(err);
-            connection.rollback(()=>{});
+            connection.rollback(() => { });
             res.status(200).send(utils.successFalse(statusCode.DB_ERROR, resMessage.READ_FAIL));
-        }finally{
-            let resData = new Array();
-            for(let i= allPostResult.length-1; i>=0;i--){
-                resData.push(allPostResult[i]);
-            }
+        } finally {
+
             pool.releaseConnection(connection);
-            res.status(200).send(utils.successTrue(statusCode.OK,resMessage.READ_SUCCESS,resData));
+            res.status(200).send(utils.successTrue(statusCode.OK, resMessage.READ_SUCCESS, postResult));
         }
     }
 });
@@ -77,60 +81,5 @@ router.post('/', upload.array('photos'), async (req, res) => {
         }
     }
 });
-
-router.get('/:idx',async(req,res)=>{
-    let idx = req.params.idx;
-    console.log("idx:::"+idx);
-
-    try{
-        var connection = await pool.getConnection();
-        await connection.beginTransaction();
-
-        let selectPost = 'SELECT * FROM post WHERE postIdx= ?';
-        let postResult = await connection.query(selectPost,[idx]);
-    
-        console.log("postResult:::"+JSON.stringify(postResult[0]));
-
-        let time = postResult[0].time;
-        let content = postResult[0].content;
-        console.log(time)
-        await connection.commit();
-
-        let selectPhoto = 'SELECT * FROM photo WHERE postIdx=?';
-        photoResult = await connection.query(selectPhoto,[idx]);
-        console.log("photoResult:::"+photoResult);
-
-        await connection.commit();
-
-        let selectLike = 'SELECT COUNT(*) cnt, userId FROM instagram.like WHERE postIdx=?';
-        likeResult = await connection.query(selectLike,[idx]);
-        console.log("count like"+JSON.stringify(likeResult));
-
-        await connection.commit();
-
-        let selectComment = 'SELECT COUNT(*) cnt, userId, comment FROM comment WHERE postIdx=?';
-        commentResult = await connection.query(selectComment,[idx]);
-        
-        await connection.commit();
-
-        var resData = {
-            content: content,
-            time : time,
-            photo : photoResult,
-            like: likeResult,
-            comment:commentResult
-        }
-        
-    }catch(err){
-        console.log(err);
-        connection.rollback(()=>{});
-        res.status(200).send(utils.successFalse(statusCode.DB_ERROR,resMessage.POST_READ_FAILE));
-    }finally{
-        pool.releaseConnection(connection);
-        res.status(200).send(utils.successTrue(statusCode.OK,resMessage.POST_READ_SUCCESS,resData));
-    }
-
-});
-
 
 module.exports = router;
