@@ -7,5 +7,8 @@ router.use('/image', require('./image'));
 router.use('/post', require('./post'));
 router.use('/like', require('./like'));
 router.use('/comment', require('./comment'));
+router.use('/follower', require('./follower'));
+router.use('/following', require('./following'));
+
 
 module.exports = router;

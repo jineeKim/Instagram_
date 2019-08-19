@@ -25,11 +25,13 @@ router.post('/:idx', async (req, res) => {
         const userIdResult = await pool.queryParam_Parse(selectUserId, [req.params.idx, user.id]);
 
         if (userIdResult[0] == null) {
+            console.log("중복 안된다고 세끼야::"+userIdResult[0]);
+
             const insertLikeQuery = 'INSERT INTO instagram.like (postIdx, userId) VALUES (?, ?)';
             const likeResult = await pool.queryParam_Parse(insertLikeQuery, [req.params.idx, user.id]);
 
             if (likeResult) {
-                res.status(200).send(utils.successTrue(statusCode.CREATED, resMessage.LIKE_SUCCESS, 1));
+                res.status(200).send(utils.successTrue(statusCode.CREATED, resMessage.LIKE_SUCCESS, true));
             } else {
                 res.status(200).send(utils.successFalse(statusCode.DB_ERROR, resMessage.LIKE_FAIL));
             }
@@ -37,7 +39,7 @@ router.post('/:idx', async (req, res) => {
             const deleteLikeQuery = 'DELETE FROM instagram.like WHERE postIdx = ? && userId = ?'
             await pool.queryParam_Parse(deleteLikeQuery, [req.params.idx, user.id]);
 
-            res.status(200).send(utils.successTrue(statusCode.CREATED, resMessage.LIKE_CANCEL, 0));
+            res.status(200).send(utils.successTrue(statusCode.CREATED, resMessage.LIKE_CANCEL, false));
         }
     }
 });
