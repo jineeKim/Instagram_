@@ -9,6 +9,7 @@ router.use('/like', require('./like'));
 router.use('/comment', require('./comment'));
 router.use('/follower', require('./follower'));
 router.use('/following', require('./following'));
+router.use('/main', require('./main'));
 
 
 module.exports = router;

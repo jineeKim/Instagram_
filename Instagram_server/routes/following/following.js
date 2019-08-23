@@ -12,7 +12,7 @@ var moment = require('moment');
 require('moment-timezone');
 moment.tz.setDefault("Asia/Seoul");
 
-router.get('/', async (req, res) => {
+router.get('/:idx', async (req, res) => {
     const user = jwt.verify(req.headers.token);
 
     console.log("user:::" + JSON.stringify(user));
@@ -26,7 +26,7 @@ router.get('/', async (req, res) => {
             'JOIN follow AS F ON F.followingIdx = U.userIdx ' +
             'WHERE F.userIdx = ? ';
 
-        const followingResult = await pool.queryParam_Parse(selectFollowingQuery, [user.userIdx]);
+        const followingResult = await pool.queryParam_Parse(selectFollowingQuery, [req.params.idx]);
 
         if (followingResult) {
             res.status(200).send(utils.successTrue(statusCode.CREATED, resMessage.READ_SUCCESS, followingResult));
@@ -49,22 +49,37 @@ router.post('/:idx', async (req, res) => {
         const userIdResult = await pool.queryParam_Parse(selectFollowingIdx, [idx, user.userIdx]);
 
         if (userIdResult[0] == null) {
+
+            const insertFollowerQuery = 'INSERT INTO follow (userIdx, followerIdx) VALUES (?, ?)';
             const insertFollowingQuery = 'INSERT INTO follow (userIdx, followingIdx) VALUES (?, ?)';
 
-            const followingResult = await pool.queryParam_Arr(insertFollowingQuery, [user.userIdx, idx]);
-            if (followingResult){
-                res.status(200).send(utils.successTrue(statusCode.CREATED, resMessage.FOLLOW_SUCCESS, true));
-            } else{
+            const insertTransaction = await pool.Transaction(async (connection)=>{
+                const followingResult = await connection.query(insertFollowingQuery, [user.userIdx, idx]);
+                await connection.query(insertFollowerQuery, [idx, user.userIdx]);
+                
+            });
+
+            if(!insertTransaction) {
                 res.status(200).send(utils.successFalse(statusCode.DB_ERROR, resMessage.FOLLOW_FAIL));
             }
+            else {
+                res.status(200).send(utils.successTrue(statusCode.CREATED, resMessage.FOLLOW_SUCCESS, true));
+            }
         } else {
-            const deleteFollowingQuery = 'DELETE FROM instagram.follow WHERE followingIdx = ? && userIdx = ?'
-            const deleteResult = await pool.queryParam_Parse(deleteFollowingQuery, [idx, user.userIdx]);
+            const deleteFollowingQuery = 'DELETE FROM instagram.follow WHERE userIdx = ? && followingIdx = ?'
+            const deleteFollowerQuery = 'DELETE FROM instagram.follow WHERE userIdx = ? && followerIdx = ? '
 
-            if (deleteResult){
-                res.status(200).send(utils.successTrue(statusCode.CREATED, resMessage.FOLLOW_CANCEL, false));
-            } else{
+            const deleteTransaction = await pool.Transaction(async (connection)=>{
+                const followingResult = await connection.query(deleteFollowingQuery, [user.userIdx, idx]);
+                
+                await connection.query(deleteFollowerQuery, [idx, user.userIdx]);
+                
+            });
+
+            if (!deleteTransaction){
                 res.status(200).send(utils.successFalse(statusCode.DB_ERROR, resMessage.FOLLOW_FAIL));
+            } else{
+                res.status(200).send(utils.successTrue(statusCode.CREATED, resMessage.FOLLOW_CANCEL, false));
             }
         }
     }

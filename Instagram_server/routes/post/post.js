@@ -14,7 +14,7 @@ var moment = require('moment');
 require('moment-timezone');
 moment.tz.setDefault("Asia/Seoul");
 
-router.get('/', async (req, res) => {
+router.get('/:idx', async (req, res) => {
     const user = jwt.verify(req.headers.token);
 
     if (user === null || !req.headers.token) {
@@ -31,7 +31,7 @@ router.get('/', async (req, res) => {
                 'GROUP BY P.postIdx ' +
                 'ORDER BY P.postIdx DESC ';
 
-            var postResult = await connection.query(selectUserPost, [user.userIdx]);
+            var postResult = await connection.query(selectUserPost, [req.params.idx]);
         } catch (err) {
             console.log(err);
             connection.rollback(() => { });
